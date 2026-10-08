@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers';
+import {roomPhotos} from './room-photos';
 
 export class AppError extends Error { constructor(public status:number,message:string){super(message);} }
 export const uid=()=>crypto.randomUUID();
@@ -47,9 +48,14 @@ export async function tick(){
  await run("UPDATE bookings SET status='completed',updated_at=CURRENT_TIMESTAMP WHERE status='approved' AND booking_date || ' ' || end_time<=?",now);
 }
 
-const photos=['https://images.unsplash.com/photo-1703355685952-03ed19f70f51?auto=format&fit=crop&w=1200&q=85','https://images.unsplash.com/photo-1582653291997-079a1c04e5a1?auto=format&fit=crop&w=1200&q=85','https://images.unsplash.com/photo-1693039501734-b637255a34d9?auto=format&fit=crop&w=1200&q=85'];
+const legacyPhotos=['https://images.unsplash.com/photo-1703355685952-03ed19f70f51?auto=format&fit=crop&w=1200&q=85','https://images.unsplash.com/photo-1582653291997-079a1c04e5a1?auto=format&fit=crop&w=1200&q=85','https://images.unsplash.com/photo-1693039501734-b637255a34d9?auto=format&fit=crop&w=1200&q=85'];
 export async function seed(){
- if(await one('SELECT id FROM profiles LIMIT 1'))return;
+ if(await one('SELECT id FROM profiles LIMIT 1')){
+   const oldRooms=await all('SELECT id,image_url FROM rooms WHERE image_url IN (?,?,?)',...legacyPhotos);
+   const updates=oldRooms.filter(r=>/^room-[0-7]$/.test(r.id)).map(r=>stmt('UPDATE rooms SET image_url=? WHERE id=? AND image_url=?',roomPhotos[Number(r.id.slice(5))],r.id,r.image_url));
+   if(updates.length)await db().batch(updates);
+   return;
+ }
  const pw=await passwordHash('RuangKita!2026');
  const profiles=[['employee-ayu','Ayu Pratama','ayu@ruangkita.demo','EMP-2024-018','People & Culture','HR Specialist'],['admin-raka','Raka Wijaya','raka@ruangkita.demo','EMP-2021-004','General Affairs','Office Administrator'],['employee-dimas','Dimas Saputra','dimas@ruangkita.demo','EMP-2023-027','Teknologi Informasi','Product Engineer'],['employee-nadia','Nadia Putri','nadia@ruangkita.demo','EMP-2022-012','Keuangan','Finance Analyst']];
  const rooms=[['Ruang Rapat Utama','Gedung Utama','3','GU-301',20,'Ruang rapat representatif untuk koordinasi lintas divisi dan pertemuan pimpinan.','available'],['Ruang Rapat 1','Gedung Rapat','1','GR-101',8,'Ruangan nyaman untuk diskusi tim kecil dan pertemuan mingguan.','available'],['Ruang Rapat 2','Gedung Rapat','1','GR-102',10,'Ruang rapat fleksibel dengan layar presentasi dan papan tulis.','available'],['Ruang Meeting A','Gedung Administrasi','2','GA-201',6,'Area diskusi tenang untuk wawancara dan koordinasi administrasi.','available'],['Ruang Meeting B','Gedung Administrasi','2','GA-202',6,'Ruang kerja kolaboratif untuk sesi perencanaan singkat.','maintenance'],['Ruang Training','Gedung Operasional','1','GO-101',40,'Ruang pelatihan dengan kursi modular dan sistem presentasi lengkap.','available'],['Ruang Video Conference','Gedung Utama','2','GU-205',12,'Ruang khusus pertemuan hybrid dengan koneksi dan perangkat konferensi.','available'],['Aula Utama','Gedung Operasional','1','GO-100',120,'Aula serbaguna untuk town hall dan kegiatan kantor.','unavailable']];
@@ -57,7 +63,7 @@ export async function seed(){
  const statements: D1PreparedStatement[]=[];
  profiles.forEach((p,i)=>statements.push(stmt('INSERT OR IGNORE INTO profiles(id,full_name,email,employee_id,department,position,phone,role,password_hash) VALUES(?,?,?,?,?,?,?,?,?)',...p,'081234560'+(100+i),i===1?'admin':'employee',pw)));
  facilities.forEach((name,i)=>statements.push(stmt('INSERT OR IGNORE INTO facilities(id,name,icon) VALUES(?,?,?)','facility-'+i,name,['snowflake','projector','wifi','presentation','speaker','video','monitor'][i])));
- rooms.forEach((r,i)=>{statements.push(stmt('INSERT OR IGNORE INTO rooms(id,room_name,building,floor,room_number,capacity,description,status,image_url) VALUES(?,?,?,?,?,?,?,?,?)','room-'+i,...r,photos[i%3]));[0,2,...(i%2?[3,6]:[1,3,5])].forEach(f=>statements.push(stmt('INSERT OR IGNORE INTO room_facilities(room_id,facility_id) VALUES(?,?)','room-'+i,'facility-'+f)));});
+ rooms.forEach((r,i)=>{statements.push(stmt('INSERT OR IGNORE INTO rooms(id,room_name,building,floor,room_number,capacity,description,status,image_url) VALUES(?,?,?,?,?,?,?,?,?)','room-'+i,...r,roomPhotos[i]));[0,2,...(i%2?[3,6]:[1,3,5])].forEach(f=>statements.push(stmt('INSERT OR IGNORE INTO room_facilities(room_id,facility_id) VALUES(?,?)','room-'+i,'facility-'+f)));});
  await db().batch(statements);
  const date=(offset:number)=>new Date(Date.now()+8*3600000+offset*86400000).toISOString().slice(0,10);
  const bookings=[['employee-ayu','room-0',1,'09:00','10:30','Koordinasi onboarding karyawan',12,'approved'],['employee-ayu','room-3',2,'10:00','11:00','Diskusi program kesejahteraan',5,'pending'],['employee-dimas','room-6',1,'13:00','15:00','Review pengembangan aplikasi',10,'pending'],['employee-nadia','room-1',1,'11:00','12:00','Evaluasi anggaran kuartal',6,'pending'],['employee-ayu','room-1',-2,'09:00','10:00','Rapat mingguan People & Culture',6,'completed'],['employee-ayu','room-2',-5,'14:00','15:30','Perencanaan kegiatan karyawan',8,'completed'],['employee-dimas','room-5',3,'09:00','12:00','Pelatihan keamanan informasi',30,'approved'],['employee-ayu','room-0',-8,'10:00','11:00','Evaluasi acara kantor',12,'rejected']];

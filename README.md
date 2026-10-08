@@ -111,3 +111,5 @@ Penggunaan operasional juga memerlukan SMTP/SSO sesuai kebijakan kantor, schedul
 - Danielle Cerullo: https://unsplash.com/photos/white-and-gray-office-rolling-chairs-bIZJRVBLfOM
 - Adrian Sulyok: https://unsplash.com/photos/a-conference-room-with-a-long-table-and-chairs-oTZXX7BUV4w
 - Lisensi: https://unsplash.com/license
+
+Foto demo ruangan terbaru berasal dari Pexels dan disimpan bersama aplikasi agar tidak bergantung pada hotlink. Sumber serta pemetaan: [docs/ROOM-PHOTOS.md](docs/ROOM-PHOTOS.md).

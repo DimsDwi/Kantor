@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers';
+import {isBundledRoomPhoto} from '@/lib/room-photos';
 import { all, one, run, stmt, db, user, admin, json, login, cookie, hash, passwordHash, safeProfile, seed, tick, uid, clean, today, localNow, audit, AppError } from '@/lib/server';
 import {requestRecovery,redeemRecovery} from '@/lib/recovery';
 import {recoveryStore} from '@/lib/recovery-store';
@@ -148,7 +149,7 @@ async function handle(request:Request){
      if(!Number.isInteger(Number(b.capacity))||Number(b.capacity)<1||Number(b.capacity)>1000)throw new AppError(400,'Kapasitas harus antara 1–1.000 orang.');
      if(!timeValid(b.operating_start)||!timeValid(b.operating_end)||b.operating_end<=b.operating_start)throw new AppError(400,'Jam operasional tidak valid.');
      if(!['available','maintenance','unavailable'].includes(b.status))throw new AppError(400,'Status ruangan tidak valid.');
-     if(b.image_url&&!/^https:\/\//.test(b.image_url)&&!/^\/api\/room-images\/[a-f0-9-]{36}$/.test(b.image_url))throw new AppError(400,'Gunakan alamat gambar HTTPS.');
+     if(b.image_url&&!isBundledRoomPhoto(b.image_url)&&!/^https:\/\//.test(b.image_url)&&!/^\/api\/room-images\/[a-f0-9-]{36}$/.test(b.image_url))throw new AppError(400,'Gunakan alamat gambar HTTPS.');
      const id=b.id??uid(),exists=b.id?await one('SELECT id FROM rooms WHERE id=?',b.id):null;if(b.id&&!exists)throw new AppError(404,'Ruangan tidak ditemukan.');
      const values=[clean(b.room_name,100),clean(b.building,100),clean(b.floor,20),clean(b.room_number,30),Number(b.capacity),clean(b.description,2000),clean(b.image_url,1000),b.status,b.operating_start,b.operating_end];
      const statements=[exists?stmt('UPDATE rooms SET room_name=?,building=?,floor=?,room_number=?,capacity=?,description=?,image_url=?,status=?,operating_start=?,operating_end=?,updated_at=CURRENT_TIMESTAMP WHERE id=?',...values,id):stmt('INSERT INTO rooms(room_name,building,floor,room_number,capacity,description,image_url,status,operating_start,operating_end,id) VALUES(?,?,?,?,?,?,?,?,?,?,?)',...values,id),stmt('DELETE FROM room_facilities WHERE room_id=?',id)];
