@@ -1,0 +1,63 @@
+{
+  "time": "2026-10-08T00:57:11.815Z",
+  "passed": 14,
+  "failed": 0,
+  "results": [
+    {
+      "name": "Unknown email returns generic message without sending",
+      "status": "PASS"
+    },
+    {
+      "name": "Recovery URL uses configured origin and fragment",
+      "status": "PASS"
+    },
+    {
+      "name": "Only hashed token stored, expires in thirty minutes",
+      "status": "PASS"
+    },
+    {
+      "name": "Valid reset updates password, clears sessions and logs once",
+      "status": "PASS"
+    },
+    {
+      "name": "Token cannot be reused",
+      "status": "PASS"
+    },
+    {
+      "name": "Concurrent resets have exactly one winner",
+      "status": "PASS"
+    },
+    {
+      "name": "Expired token cannot change password or session",
+      "status": "PASS"
+    },
+    {
+      "name": "New recovery invalidates previous link",
+      "status": "PASS"
+    },
+    {
+      "name": "Inactive account cannot request or redeem a reset",
+      "status": "PASS"
+    },
+    {
+      "name": "Invalid token and short password rejected without consuming valid link",
+      "status": "PASS"
+    },
+    {
+      "name": "Rate limit caps email delivery at three per fifteen minutes",
+      "status": "PASS"
+    },
+    {
+      "name": "Unconfigured email falls back to a single admin request",
+      "status": "PASS"
+    },
+    {
+      "name": "Failed email invalidates token and keeps admin fallback",
+      "status": "PASS"
+    },
+    {
+      "name": "Transaction failure rolls back password and session changes",
+      "status": "PASS"
+    }
+  ]
+}

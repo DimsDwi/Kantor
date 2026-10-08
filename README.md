@@ -1,6 +1,8 @@
 # RuangKita — Sistem Peminjaman Ruangan Kantor
 
-Aplikasi demo full-stack untuk peminjaman ruangan kantor, dengan antarmuka berbahasa Indonesia. Source aplikasi, migrasi database aktif, pengujian, dan rancangan migrasi Supabase tersedia dalam folder ini.
+Aplikasi demo full-stack untuk peminjaman ruangan kantor, dengan antarmuka berbahasa Indonesia. Source aplikasi, migrasi database aktif, pengujian, dan rancangan migrasi Supabase tersedia dalam folder ini. Repository: https://github.com/DimsDwi/Kantor.
+
+Pembaruan 8 Oktober 2026: upload foto ruangan, CSV dari server, reset email sekali pakai, dan endpoint scheduler sudah diimplementasikan. Aktivasi layanan serta kendala deployment dijelaskan di [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
 ## Status implementasi
 
@@ -27,13 +29,13 @@ Tombol **Akun pegawai** dan **Akun admin** mengisi formulir login. Klik **Masuk 
 ## Fitur
 
 - Login email/kata sandi, tampil/sembunyikan kata sandi, sesi yang dapat diingat, logout, penggantian kata sandi, akun aktif/nonaktif, pembatasan percobaan login.
-- Pemulihan akses: pegawai membuat permintaan; admin memverifikasi identitas dan menetapkan kata sandi baru melalui menu Pengguna. **Tidak mengirim email** karena SMTP belum dikonfigurasi.
+- Pemulihan akses melalui tautan email sekali pakai, berlaku 30 menit, dengan token yang disimpan sebagai hash, pembatasan permintaan, dan pengakhiran semua sesi setelah reset. Resend perlu dikonfigurasi untuk pengiriman nyata. Jika belum dikonfigurasi atau pengiriman gagal, permintaan ditangani admin.
 - Dashboard pegawai dan admin, katalog dengan pencarian/filter, detail ruangan, kalender ketersediaan, formulir dan konfirmasi dua langkah.
 - Pending, approved, rejected, cancelled, completed; persetujuan/penolakan, pembatalan sebelum mulai, notifikasi dan audit atomik.
 - Kalender bulan/minggu/hari. Jadwal bersama hanya berisi ruangan, tanggal, waktu, dan status; tujuan/kontak/pemilik tidak dibocorkan kepada pegawai lain.
 - Dokumen pendukung disimpan di R2, metadata di D1. Unduhan memerlukan akun pemilik atau admin; tipe berkas dan signature dasar diperiksa.
-- Kelola ruangan (tambah, lihat, ubah, nonaktifkan, perawatan), fasilitas, pengguna/peran/status; profil pribadi dan penggantian kata sandi.
-- Laporan dengan rentang tanggal, gedung, ruangan, departemen, status; CSV dengan mitigasi formula injection.
+- Kelola ruangan (tambah, lihat, ubah, nonaktifkan, perawatan), upload foto PNG/JPG maksimal 5 MB ke R2, fasilitas, pengguna/peran/status; profil pribadi dan penggantian kata sandi.
+- Laporan dengan rentang tanggal, gedung, ruangan, departemen, status; CSV dari endpoint khusus admin dengan filter di server, header unduhan, dan mitigasi formula injection. Unduhan browser sudah diverifikasi.
 - Layout desktop, tablet, ponsel; dialog keyboard-friendly, label formulir, skeleton, empty state, error state, konfirmasi, toast, dan tombol loading.
 
 ## Aturan bisnis
@@ -50,11 +52,11 @@ Tombol **Akun pegawai** dan **Akun admin** mengisi formulir login. Klik **Masuk 
 
 Saat aplikasi terbuka, data diperbarui setiap 30 detik. Permintaan state menjalankan pemrosesan booking selesai dan pengingat untuk booking yang mulai dalam 30 menit. Notifikasi dideduplikasi dan tersimpan di database.
 
-**Belum ada scheduler mandiri:** jika tidak ada pengguna yang membuka aplikasi, pemrosesan baru dilakukan saat permintaan berikutnya. Pengingat tidak menjamin tiba tepat waktu saat seluruh aplikasi ditutup. Tambahkan scheduler server sebelum penggunaan operasional yang membutuhkan pengingat tanpa kehadiran pengguna.
+Endpoint `POST /api/jobs/reminders` memproses pengingat tanpa sesi browser dan dilindungi `CRON_SECRET`. Workflow GitHub Actions setiap lima menit telah tersedia, tetapi **belum diaktifkan** karena URL produksi belum berhasil terbit dan secrets belum diisi. Lihat panduan operasi. Tanpa konfigurasi tersebut, pemrosesan tetap bergantung pada permintaan aplikasi.
 
 ## Menjalankan secara lokal
 
-Dibutuhkan Node.js >=22.13 (Node 24 untuk `node:sqlite` pada pengujian database). Instal dependensi menggunakan lockfile:
+Dibutuhkan Node.js >=22.13 dengan dukungan `node:sqlite`; CI memakai Node 22 terbaru. Instal dependensi menggunakan lockfile:
 
 ```powershell
 npm ci
@@ -67,6 +69,7 @@ Terapkan setiap migrasi **sekali**, berurutan, pada database lokal baru:
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_plain_purple_man.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_booking_guards.sql
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0002_validation_guards.sql
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0003_password_recovery.sql
 npm run dev
 ```
 
@@ -79,10 +82,13 @@ Jika shim npm Windows bermasalah, jalankan entrypoint npm melalui Node dari inst
 ```powershell
 node node_modules/typescript/bin/tsc --noEmit
 node tests/database.mjs
+node --experimental-strip-types tests/csv.mjs
+node --experimental-strip-types tests/recovery.mjs
 node tests/api.mjs
+node tests/features.mjs
 ```
 
-`tests/api.mjs` hanya menerima localhost/127.0.0.1, memerlukan server berjalan, dan menambahkan data QA ke database lokal. Jangan arahkan ke data kantor. Bukti hasil ada di `qa/api-results.json` dan `qa/database-results.json`; catatan browser ada di `qa/README.md`.
+`tests/api.mjs` dan `tests/features.mjs` hanya menerima localhost/127.0.0.1, memerlukan server berjalan (tes fitur juga memerlukan `CRON_SECRET` lokal, lihat panduan operasi), dan menambahkan data QA ke database lokal. Jangan arahkan ke data kantor. Bukti hasil ada di `qa/api-results.json` dan `qa/database-results.json`; catatan browser ada di `qa/README.md`.
 
 ## Struktur
 

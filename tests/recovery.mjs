@@ -1,0 +1,36 @@
+import {DatabaseSync} from 'node:sqlite';
+import {readFileSync,readdirSync,writeFileSync} from 'node:fs';
+import {randomUUID,createHash} from 'node:crypto';
+import assert from 'node:assert/strict';
+import {requestRecovery,redeemRecovery,recoveryMessage} from '../lib/recovery.ts';
+const results=[];
+async function check(name,fn){try{await fn();results.push({name,status:'PASS'});console.log('PASS',name);}catch(e){results.push({name,status:'FAIL',error:e.message});console.error('FAIL',name,e.message);}}
+function fixture(){
+ const db=new DatabaseSync(':memory:');db.exec('PRAGMA foreign_keys=ON');
+ for(const f of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())db.exec(readFileSync('drizzle/'+f,'utf8'));
+ db.exec("INSERT INTO profiles(id,full_name,email,employee_id,department,position,password_hash) VALUES('u','Test','test@example.com','E1','IT','Engineer','old-hash'); INSERT INTO sessions(id,user_id,expires_at) VALUES('old-session','u',9999999999999)");
+ const mail=[];let now=Date.now();
+ const store={
+  one:async(sql,...args)=>db.prepare(sql).get(...args),
+  batch:async statements=>{db.exec('BEGIN IMMEDIATE');try{const result=statements.map(s=>({meta:{changes:Number(db.prepare(s.sql).run(...s.args).changes)}}));db.exec('COMMIT');return result;}catch(e){db.exec('ROLLBACK');throw e;}},
+  hash:async s=>createHash('sha256').update(s).digest('hex'),passwordHash:async p=>'hashed:'+p,
+  now:()=>now,token:()=>randomUUID()+randomUUID(),appOrigin:'https://office.example',
+  sendEmail:async(email,link)=>mail.push({email,link}),
+ };
+ return {db,store,mail,advance:ms=>now+=ms,token:()=>new URLSearchParams(new URL(mail.at(-1).link).hash.slice(1)).get('token')};
+}
+await check('Unknown email returns generic message without sending',async()=>{const f=fixture();assert.equal((await requestRecovery(f.store,'missing@example.com','ip')).message,recoveryMessage);assert.equal(f.mail.length,0);});
+await check('Recovery URL uses configured origin and fragment',async()=>{const f=fixture();await requestRecovery(f.store,'test@example.com','ip');const u=new URL(f.mail[0].link);assert.equal(u.origin,'https://office.example');assert.equal(u.search,'');assert.ok(u.hash.startsWith('#token='));});
+await check('Only hashed token stored, expires in thirty minutes',async()=>{const f=fixture();await requestRecovery(f.store,'test@example.com','ip');const row=f.db.prepare('SELECT * FROM password_reset_tokens').get();assert.notEqual(row.token_hash,f.token());assert.equal(row.token_hash,await f.store.hash(f.token()));assert.equal(row.expires_at,f.store.now()+1800000);});
+await check('Valid reset updates password, clears sessions and logs once',async()=>{const f=fixture();await requestRecovery(f.store,'test@example.com','ip');assert.equal(await redeemRecovery(f.store,f.token(),'NewPassword!2026'),true);assert.equal(f.db.prepare('SELECT password_hash FROM profiles').get().password_hash,'hashed:NewPassword!2026');assert.equal(f.db.prepare('SELECT count(*) n FROM sessions').get().n,0);assert.equal(f.db.prepare("SELECT count(*) n FROM activity_logs WHERE action='reset_password'").get().n,1);});
+await check('Token cannot be reused',async()=>{const f=fixture();await requestRecovery(f.store,'test@example.com','ip');const t=f.token();assert.equal(await redeemRecovery(f.store,t,'NewPassword!2026'),true);assert.equal(await redeemRecovery(f.store,t,'AnotherPassword!2026'),false);});
+await check('Concurrent resets have exactly one winner',async()=>{const f=fixture();await requestRecovery(f.store,'test@example.com','ip');assert.deepEqual((await Promise.all([redeemRecovery(f.store,f.token(),'NewPassword!2026'),redeemRecovery(f.store,f.token(),'OtherPassword!2026')])).sort(),[false,true]);});
+await check('Expired token cannot change password or session',async()=>{const f=fixture();await requestRecovery(f.store,'test@example.com','ip');f.advance(1800000);assert.equal(await redeemRecovery(f.store,f.token(),'NewPassword!2026'),false);assert.equal(f.db.prepare('SELECT password_hash FROM profiles').get().password_hash,'old-hash');assert.equal(f.db.prepare('SELECT count(*) n FROM sessions').get().n,1);});
+await check('New recovery invalidates previous link',async()=>{const f=fixture();await requestRecovery(f.store,'test@example.com','ip');const old=f.token();await requestRecovery(f.store,'test@example.com','ip');assert.equal(await redeemRecovery(f.store,old,'NewPassword!2026'),false);assert.equal(await redeemRecovery(f.store,f.token(),'NewPassword!2026'),true);});
+await check('Inactive account cannot request or redeem a reset',async()=>{const f=fixture();await requestRecovery(f.store,'test@example.com','ip');f.db.exec("UPDATE profiles SET status='inactive' WHERE id='u'");assert.equal(await redeemRecovery(f.store,f.token(),'NewPassword!2026'),false);await requestRecovery(f.store,'test@example.com','other-ip');assert.equal(f.mail.length,1);});
+await check('Invalid token and short password rejected without consuming valid link',async()=>{const f=fixture();await requestRecovery(f.store,'test@example.com','ip');assert.equal(await redeemRecovery(f.store,'invalid','NewPassword!2026'),false);assert.equal(await redeemRecovery(f.store,f.token(),'short'),false);assert.equal(await redeemRecovery(f.store,f.token(),'NewPassword!2026'),true);});
+await check('Rate limit caps email delivery at three per fifteen minutes',async()=>{const f=fixture();for(let i=0;i<8;i++)await requestRecovery(f.store,'test@example.com','ip');assert.equal(f.mail.length,3);f.advance(900001);await requestRecovery(f.store,'test@example.com','ip');assert.equal(f.mail.length,4);});
+await check('Unconfigured email falls back to a single admin request',async()=>{const f=fixture();delete f.store.sendEmail;await requestRecovery(f.store,'test@example.com','ip');await requestRecovery(f.store,'test@example.com','ip');assert.equal(f.db.prepare("SELECT count(*) n FROM reset_requests WHERE status='pending'").get().n,1);assert.equal(f.db.prepare('SELECT count(*) n FROM password_reset_tokens').get().n,0);});
+await check('Failed email invalidates token and keeps admin fallback',async()=>{const f=fixture();f.store.sendEmail=async()=>{throw new Error('mail unavailable');};assert.equal((await requestRecovery(f.store,'test@example.com','ip')).message,recoveryMessage);assert.equal(f.db.prepare('SELECT count(*) n FROM password_reset_tokens').get().n,0);assert.equal(f.db.prepare("SELECT count(*) n FROM reset_requests WHERE status='pending'").get().n,1);});
+await check('Transaction failure rolls back password and session changes',async()=>{const f=fixture();await requestRecovery(f.store,'test@example.com','ip');f.db.exec("CREATE TRIGGER audit_failure BEFORE INSERT ON activity_logs BEGIN SELECT RAISE(ABORT,'TEST_FAILURE'); END");await assert.rejects(()=>redeemRecovery(f.store,f.token(),'NewPassword!2026'),/TEST_FAILURE/);assert.equal(f.db.prepare('SELECT password_hash FROM profiles').get().password_hash,'old-hash');assert.equal(f.db.prepare('SELECT count(*) n FROM sessions').get().n,1);assert.equal(f.db.prepare('SELECT count(*) n FROM password_reset_tokens').get().n,1);});
+const failed=results.filter(r=>r.status==='FAIL').length;writeFileSync('qa/recovery-results.json',JSON.stringify({time:new Date().toISOString(),passed:results.length-failed,failed,results},null,2));process.exitCode=failed?1:0;

@@ -1,10 +1,10 @@
 {
-  "time": "2026-10-08T00:30:18.284Z",
+  "time": "2026-10-08T00:57:11.921Z",
   "passed": 29,
   "failed": 0,
   "results": [
     {
-      "name": "Schema has 11 application tables",
+      "name": "Schema has 12 application tables",
       "status": "PASS"
     },
     {

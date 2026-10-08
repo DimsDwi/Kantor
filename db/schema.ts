@@ -28,3 +28,6 @@ export const sessions=sqliteTable('sessions',{id:text('id').primaryKey(),user_id
 export const loginAttempts=sqliteTable('login_attempts',{key:text('key').primaryKey(),count:integer('count').notNull().default(0),reset_at:integer('reset_at').notNull()});
 export const resetRequests=sqliteTable('reset_requests',{id:text('id').primaryKey(),user_id:text('user_id').notNull().references(()=>profiles.id),status:text('status').notNull().default('pending'),created_at:created()});
 export const documents=sqliteTable('documents',{id:text('id').primaryKey(),user_id:text('user_id').notNull().references(()=>profiles.id),booking_id:text('booking_id').references(()=>bookings.id),object_key:text('object_key').notNull().unique(),filename:text('filename').notNull(),content_type:text('content_type').notNull(),size:integer('size').notNull(),created_at:created()});
+export const passwordResetTokens=sqliteTable('password_reset_tokens',{
+ token_hash:text('token_hash').primaryKey(),user_id:text('user_id').notNull().unique().references(()=>profiles.id,{onDelete:'cascade'}),expires_at:integer('expires_at').notNull(),created_at:created(),
+},t=>[index('idx_reset_expiry').on(t.expires_at)]);

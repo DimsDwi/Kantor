@@ -1,0 +1,83 @@
+{
+  "time": "2026-10-08T01:11:01.178Z",
+  "passed": 19,
+  "failed": 0,
+  "results": [
+    {
+      "name": "Employee cannot upload room photo",
+      "status": "PASS"
+    },
+    {
+      "name": "Room photo signature validated",
+      "status": "PASS"
+    },
+    {
+      "name": "Room photo size enforced",
+      "status": "PASS"
+    },
+    {
+      "name": "SVG room upload rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Room photo at the full 5 MB limit accepted",
+      "status": "PASS"
+    },
+    {
+      "name": "Admin uploads real PNG to R2",
+      "status": "PASS"
+    },
+    {
+      "name": "Uploaded photo accessible to signed-in employee",
+      "status": "PASS"
+    },
+    {
+      "name": "Anonymous room photo access denied",
+      "status": "PASS"
+    },
+    {
+      "name": "Uploaded photo can be saved on a room",
+      "status": "PASS"
+    },
+    {
+      "name": "Employee cannot export admin report",
+      "status": "PASS"
+    },
+    {
+      "name": "Anonymous report access denied",
+      "status": "PASS"
+    },
+    {
+      "name": "Report delivers CSV attachment with all eleven headers",
+      "status": "PASS"
+    },
+    {
+      "name": "Report filters applied server-side",
+      "status": "PASS"
+    },
+    {
+      "name": "Report rejects reversed or invalid dates",
+      "status": "PASS"
+    },
+    {
+      "name": "Malformed JSON returns a validation error",
+      "status": "PASS"
+    },
+    {
+      "name": "Invalid recovery token is rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Scheduler rejects missing authorization",
+      "status": "PASS"
+    },
+    {
+      "name": "Scheduler rejects incorrect authorization",
+      "status": "PASS"
+    },
+    {
+      "name": "Scheduler runs without a browser user session and is idempotent",
+      "status": "PASS"
+    }
+  ]
+}

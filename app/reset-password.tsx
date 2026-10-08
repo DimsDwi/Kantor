@@ -1,0 +1,11 @@
+'use client';
+import {useEffect,useState,useRef} from 'react';
+import {Building2,CheckCircle2} from 'lucide-react';
+import {api} from '@/lib/client';
+import {Btn} from './ui';
+export default function ResetPassword({onDone}:{onDone:()=>void}){
+ const initialized=useRef(false);
+ const [token,setToken]=useState(''),[password,setPassword]=useState(''),[confirmation,setConfirmation]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false),[done,setDone]=useState(false);
+ useEffect(()=>{if(initialized.current)return;initialized.current=true;const value=new URLSearchParams(window.location.hash.slice(1)).get('token')??'';setToken(value);window.history.replaceState({},'',window.location.pathname);},[]);
+ return <main className="login-form-wrap" style={{minHeight:'100vh'}}><div className="login-form"><span className="login-mark"><Building2 size={25}/></span><h2>{done?'Kata sandi diperbarui':'Buat kata sandi baru'}</h2>{done?<><p className="success"><CheckCircle2 size={18}/>Semua sesi lama telah diakhiri. Masuk kembali dengan kata sandi baru.</p><Btn className="primary full" onClick={onDone}>Kembali ke login</Btn></>:!token?<><p className="error">Tautan pemulihan tidak ditemukan. Buka tautan dari email Anda atau minta tautan baru.</p><Btn onClick={onDone}>Kembali ke login</Btn></>:<form onSubmit={async e=>{e.preventDefault();setError('');if(password!==confirmation){setError('Konfirmasi kata sandi belum sama.');return;}setBusy(true);try{await api('reset-password',{token,password});setToken('');setPassword('');setConfirmation('');setDone(true);}catch(e:any){setError(e.message);}finally{setBusy(false);}}}><p className="muted">Gunakan minimal 12 karakter. Tautan berlaku selama 30 menit dan hanya dapat digunakan sekali.</p><label className="field">Kata sandi baru<input type="password" autoComplete="new-password" minLength={12} maxLength={256} value={password} onChange={e=>setPassword(e.target.value)} required/></label><label className="field">Konfirmasi kata sandi<input type="password" autoComplete="new-password" minLength={12} maxLength={256} value={confirmation} onChange={e=>setConfirmation(e.target.value)} required/></label>{error&&<div className="error" role="alert">{error}</div>}<Btn className="primary full" busy={busy}>Simpan kata sandi</Btn></form>}</div></main>;
+}

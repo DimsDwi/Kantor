@@ -1,0 +1,41 @@
+name: Application checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: node tests/database.mjs
+      - run: node --experimental-strip-types tests/csv.mjs
+      - run: node --experimental-strip-types tests/recovery.mjs
+      - run: npm run build
+      - name: Prepare fresh local database
+        run: |
+          for migration in drizzle/*.sql; do
+            node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file "$migration"
+          done
+          node -e "require('fs').writeFileSync('.dev.vars','CRON_SECRET='+require('crypto').randomBytes(32).toString('hex')+'\n')"
+      - name: Integration tests
+        run: |
+          npm run dev > /tmp/ruangkita-dev.log 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid" || true' EXIT
+          ready=false
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:5173/api/bootstrap > /dev/null; then ready=true; break; fi
+            sleep 2
+          done
+          if [ "$ready" != true ]; then cat /tmp/ruangkita-dev.log; exit 1; fi
+          npm run test:api

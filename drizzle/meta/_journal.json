@@ -22,6 +22,13 @@
       "when": 1791419305021,
       "tag": "0002_validation_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1791420890145,
+      "tag": "0003_password_recovery",
+      "breakpoints": true
     }
   ]
 }

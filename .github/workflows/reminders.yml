@@ -1,0 +1,33 @@
+name: Booking reminders
+on:
+  schedule:
+    - cron: '3-58/5 * * * *'
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: booking-reminders
+  cancel-in-progress: false
+jobs:
+  process:
+    if: vars.REMINDERS_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Process reminders and completed bookings
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITES_ACCESS_TOKEN: ${{ secrets.SITES_ACCESS_TOKEN }}
+        run: |
+          node --input-type=module <<'NODE'
+          const origin = new URL(process.env.APP_URL);
+          if(origin.protocol !== 'https:' || origin.username || origin.password) throw new Error('APP_URL must be an HTTPS origin');
+          if(!process.env.CRON_SECRET) throw new Error('CRON_SECRET is required');
+          const headers = {Authorization:'Bearer '+process.env.CRON_SECRET};
+          if(process.env.SITES_ACCESS_TOKEN) headers['OAI-Sites-Authorization']='Bearer '+process.env.SITES_ACCESS_TOKEN;
+          const result = await fetch(new URL('/api/jobs/reminders',origin), {method:'POST',headers,redirect:'error',signal:AbortSignal.timeout(30000)});
+          if(!result.ok) throw new Error('Scheduler returned HTTP '+result.status);
+          const body = await result.json();
+          if(body.ok !== true) throw new Error('Scheduler did not confirm completion');
+          console.log('Booking processing completed.');
+          NODE

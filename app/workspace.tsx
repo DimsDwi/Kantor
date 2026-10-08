@@ -2,6 +2,7 @@
 import {useEffect,useState,useCallback} from 'react';
 import {Building2,LayoutDashboard,CalendarDays,ClipboardList,History,Bell,Users,BarChart3,Settings2,ScrollText,LogOut,Menu,X,Plus,ChevronRight,CheckCircle2,DoorOpen,ShieldCheck,UserCircle} from 'lucide-react';
 import Login from './login-view';
+import ResetPassword from './reset-password';
 import BookingForm from './booking-form';
 import Calendar from './calendar-view';
 import AdminPanel from './admin-panel';
@@ -14,7 +15,7 @@ export default function App(){
  const [data,setData]=useState<Data|null>(null),[route,setRoute]=useState('/'),[loading,setLoading]=useState(true),[error,setError]=useState(''),[menu,setMenu]=useState(false),[booking,setBooking]=useState<string|null>(null),[detail,setDetail]=useState<Row|null>(null),[toast,setToast]=useState(''),[action,setAction]=useState<{booking:Row,type:string}|null>(null),[reason,setReason]=useState(''),[busy,setBusy]=useState(false),[actionError,setActionError]=useState('');
  const go=useCallback((path:string)=>{window.history.pushState({},'',path);setRoute(path);setMenu(false);window.scrollTo({top:0});},[]);
  const refresh=useCallback(async()=>{try{const d=await api('state');setData(d);setError('');return d;}catch(e:any){if(e.status===401){setData(null);go('/login');}else setError(e.message);return null;}},[go]);
- useEffect(()=>{setRoute(window.location.pathname);const pop=()=>setRoute(window.location.pathname);window.addEventListener('popstate',pop);(async()=>{try{await api('bootstrap');}catch{}try{const d=await api('state');setData(d);if(['/','/login'].includes(window.location.pathname))go(d.user.role==='admin'?'/admin/dashboard':'/dashboard');}catch(e:any){if(e.status===401){go('/login');}else setError(e.message);}finally{setLoading(false);}})();return()=>window.removeEventListener('popstate',pop);},[go]);
+ useEffect(()=>{setRoute(window.location.pathname);const pop=()=>setRoute(window.location.pathname);window.addEventListener('popstate',pop);(async()=>{if(window.location.pathname==='/reset-password'){setLoading(false);return;}try{await api('bootstrap');}catch{}try{const d=await api('state');setData(d);if(['/','/login'].includes(window.location.pathname))go(d.user.role==='admin'?'/admin/dashboard':'/dashboard');}catch(e:any){if(e.status===401){go('/login');}else setError(e.message);}finally{setLoading(false);}})();return()=>window.removeEventListener('popstate',pop);},[go]);
  useEffect(()=>{if(!data)return;const id=setInterval(()=>{if(document.visibilityState==='visible')void refresh();},30000);return()=>clearInterval(id);},[!!data,refresh]);
  useEffect(()=>{if(toast){const id=setTimeout(()=>setToast(''),5000);return()=>clearTimeout(id);}},[toast]);
  const notify=(s:string)=>setToast(s);
@@ -23,6 +24,7 @@ export default function App(){
  async function execute(){if(!action)return;setBusy(true);setActionError('');try{await api('booking-action',{id:action.booking.id,action:action.type,reason});setAction(null);setDetail(null);await refresh();notify(action.type==='approve'?'Pengajuan disetujui. Notifikasi telah dikirim.':action.type==='reject'?'Pengajuan ditolak. Notifikasi telah dikirim.':'Peminjaman berhasil dibatalkan.');}catch(e:any){setActionError(e.message);}finally{setBusy(false);}}
  function ask(b:Row,type:string){setReason('');setActionError('');setDetail(null);setAction({booking:b,type});}
  if(loading)return <div className="initial-loading"><div className="brand"><span className="brand-icon"><Building2/></span>RuangKita</div><div className="skeleton"/><div className="skeleton short"/><p>Menyiapkan ruang kerja Anda…</p></div>;
+ if(route==='/reset-password')return <ResetPassword onDone={()=>{setData(null);go('/login');}}/>;
  if(!data)return <><Login onLogin={loggedIn}/>{error&&<div className="global-error" role="alert">{error}<button onClick={()=>window.location.reload()}>Coba lagi</button></div>}</>;
  const admin=data.user.role==='admin',isAdmin=route.startsWith('/admin'),unread=data.notifications.filter(n=>!n.is_read).length;
  const nav=[{label:'Dashboard',path:admin?'/admin/dashboard':'/dashboard',icon:LayoutDashboard},{label:'Direktori Ruangan',path:'/rooms',icon:DoorOpen},{label:'Peminjaman Saya',path:'/my-bookings',icon:ClipboardList},{label:'Kalender Ruangan',path:'/calendar',icon:CalendarDays},{label:'Riwayat Peminjaman',path:'/history',icon:History}];

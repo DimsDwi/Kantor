@@ -8,7 +8,7 @@ db.exec("INSERT INTO profiles(id,full_name,email,employee_id,department,position
 const date=new Date(Date.now()+10*86400000).toISOString().slice(0,10);
 let seq=0;const insert=db.prepare('INSERT INTO bookings(id,user_id,room_id,booking_date,start_time,end_time,purpose,participant_count,contact_number,status,rejection_reason,approved_by,approved_at,actor_id,request_key) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
 function book(overrides={}){const b={id:'b'+(++seq),user:'e',room:'r',date,start:'09:00',end:'11:00',count:5,status:'pending',reason:null,approver:null,at:null,actor:'e',...overrides};insert.run(b.id,b.user,b.room,b.date,b.start,b.end,'Diskusi proyek',b.count,'081234567890',b.status,b.reason,b.approver,b.at,b.actor,b.id);return b.id;}
-check('Schema has 11 application tables',()=>assert.equal(db.prepare("SELECT count(*) n FROM sqlite_schema WHERE type='table'").get().n,11));
+check('Schema has 12 application tables',()=>assert.equal(db.prepare("SELECT count(*) n FROM sqlite_schema WHERE type='table'").get().n,12));
 let id;check('Direct SQL valid booking',()=>{id=book();});
 check('Direct SQL overlap blocked',()=>assert.throws(()=>book({start:'10:00',end:'12:00'}),/BOOKING_CONFLICT/));
 check('Direct SQL same-time blocked',()=>assert.throws(()=>book(),/BOOKING_CONFLICT/));
@@ -39,4 +39,3 @@ check('Room-date index used',()=>assert.match(JSON.stringify(db.prepare("EXPLAIN
 // Fixture simulates an approved booking whose end time has naturally passed.
 check('Elapsed approval completes and sends one notification',()=>{db.exec('DROP TRIGGER booking_insert_validation');const b=book({date:'2020-01-02',status:'approved',actor:'a',approver:'a',at:'2020-01-01'});db.exec(readFileSync('drizzle/0002_validation_guards.sql','utf8').split('--> statement-breakpoint')[0]);db.prepare("UPDATE bookings SET status='completed' WHERE id=?").run(b);assert.equal(db.prepare("SELECT count(*) n FROM notifications WHERE reference_id=? AND type='completed'").get(b).n,1);db.prepare("UPDATE bookings SET status='completed' WHERE id=?").run(b);assert.equal(db.prepare("SELECT count(*) n FROM notifications WHERE reference_id=? AND type='completed'").get(b).n,1);});
 mkdirSync('qa',{recursive:true});const failed=results.filter(r=>r.status==='FAIL').length;writeFileSync('qa/database-results.json',JSON.stringify({time:new Date().toISOString(),passed:results.length-failed,failed,results},null,2));console.log(`${results.length-failed}/${results.length} passed`);process.exitCode=failed?1:0;
-
