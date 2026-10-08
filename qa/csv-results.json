@@ -1,0 +1,27 @@
+{
+  "time": "2026-10-08T00:44:18.888Z",
+  "passed": 5,
+  "failed": 0,
+  "results": [
+    {
+      "name": "BOM and CRLF",
+      "status": "PASS"
+    },
+    {
+      "name": "Comma quotes multiline",
+      "status": "PASS"
+    },
+    {
+      "name": "Formula injection",
+      "status": "PASS"
+    },
+    {
+      "name": "Null and Unicode",
+      "status": "PASS"
+    },
+    {
+      "name": "Empty report",
+      "status": "PASS"
+    }
+  ]
+}

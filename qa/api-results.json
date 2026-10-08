@@ -1,0 +1,195 @@
+{
+  "time": "2026-10-08T00:31:36.778Z",
+  "passed": 47,
+  "failed": 0,
+  "results": [
+    {
+      "name": "Anonymous protected API rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Invalid login rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Employee login and HttpOnly session",
+      "status": "PASS"
+    },
+    {
+      "name": "Admin login",
+      "status": "PASS"
+    },
+    {
+      "name": "Employee admin API denied",
+      "status": "PASS"
+    },
+    {
+      "name": "Admin employee surface allowed",
+      "status": "PASS"
+    },
+    {
+      "name": "Profile role injection ignored",
+      "status": "PASS"
+    },
+    {
+      "name": "Room creation",
+      "status": "PASS"
+    },
+    {
+      "name": "Employee room mutation rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Valid booking",
+      "status": "PASS"
+    },
+    {
+      "name": "Overlap rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Same-time rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Adjacent intervals permitted",
+      "status": "PASS"
+    },
+    {
+      "name": "Capacity exceeded rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Outside operating hours rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "End before start rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Invalid date rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Past booking rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Noninteger participants rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Maintenance room rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Unavailable room rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Foreign ownership cancellation blocked",
+      "status": "PASS"
+    },
+    {
+      "name": "Employee approval blocked",
+      "status": "PASS"
+    },
+    {
+      "name": "Rejection requires reason",
+      "status": "PASS"
+    },
+    {
+      "name": "Approval stores approver and notification",
+      "status": "PASS"
+    },
+    {
+      "name": "Reprocessing decided booking rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Rejection stores reason and notification",
+      "status": "PASS"
+    },
+    {
+      "name": "Availability does not expose identities or purpose",
+      "status": "PASS"
+    },
+    {
+      "name": "Employee only sees own bookings",
+      "status": "PASS"
+    },
+    {
+      "name": "Room capacity cannot invalidate active bookings",
+      "status": "PASS"
+    },
+    {
+      "name": "Cancellation releases slot",
+      "status": "PASS"
+    },
+    {
+      "name": "Concurrent overlapping requests allow exactly one",
+      "status": "PASS"
+    },
+    {
+      "name": "Idempotent request retry does not duplicate",
+      "status": "PASS"
+    },
+    {
+      "name": "Supporting PDF upload",
+      "status": "PASS"
+    },
+    {
+      "name": "Supporting document ownership",
+      "status": "PASS"
+    },
+    {
+      "name": "Document attachment and download",
+      "status": "PASS"
+    },
+    {
+      "name": "Wrong file signature rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Mark all notifications read",
+      "status": "PASS"
+    },
+    {
+      "name": "Facility create, update, delete",
+      "status": "PASS"
+    },
+    {
+      "name": "Create real user and login",
+      "status": "PASS"
+    },
+    {
+      "name": "User role update and deactivation",
+      "status": "PASS"
+    },
+    {
+      "name": "Admin cannot demote own account",
+      "status": "PASS"
+    },
+    {
+      "name": "Forgot-password request created without revealing existence",
+      "status": "PASS"
+    },
+    {
+      "name": "Activity audit trail",
+      "status": "PASS"
+    },
+    {
+      "name": "Room disable after active bookings resolved",
+      "status": "PASS"
+    },
+    {
+      "name": "Cross-origin mutation blocked",
+      "status": "PASS"
+    },
+    {
+      "name": "Logout invalidates session",
+      "status": "PASS"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+'use client';
+import { Check, FileSearch, Loader2, Snowflake, Projector, Wifi, Presentation, Speaker, Video, Monitor, Building2 } from 'lucide-react';
+import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
+import {labels,Row} from '@/lib/client';
+export const Status=({value}:{value:string})=><span className={'badge '+value}>{labels[value]??value}</span>;
+export const Btn=({children,busy=false,className='',...props}:React.ButtonHTMLAttributes<HTMLButtonElement>&{busy?:boolean})=><button {...props} disabled={busy||props.disabled} className={'btn '+className}>{busy?<Loader2 size={16} className="spin"/>:null}{children}</button>;
+export const Empty=({title='Belum ada data',text='Data akan tampil di sini setelah tersedia.',children}:{title?:string,text?:string,children?:React.ReactNode})=><div className="empty"><span><FileSearch size={28}/></span><h3>{title}</h3><p>{text}</p>{children}</div>;
+export const Modal=({title,description,children,onClose,wide=false}:{title:string,description?:string,children:React.ReactNode,onClose:()=>void,wide?:boolean})=><Dialog open onOpenChange={o=>{if(!o)onClose();}}><DialogContent className={'rk-modal '+(wide?'wide':'')}><DialogTitle>{title}</DialogTitle><DialogDescription>{description??'Lengkapi informasi berikut.'}</DialogDescription>{children}</DialogContent></Dialog>;
+export function Facility({f}:{f:Row}){const Icon=({snowflake:Snowflake,projector:Projector,wifi:Wifi,presentation:Presentation,speaker:Speaker,video:Video,monitor:Monitor} as any)[f.icon]??Check;return <span className="facility"><Icon size={14}/>{f.name}</span>;}
+export function RoomImage({room,className=''}:{room:Row,className?:string}){return room.image_url?<img className={className} src={room.image_url} alt={room.room_name} loading="lazy" onError={e=>{e.currentTarget.style.visibility='hidden';}}/>:<div className={'image-placeholder '+className}><Building2 size={40}/><span>{room.room_name}</span></div>;}
+export function Stat({icon:Icon,label,value,detail,tone='blue'}:{icon:any,label:string,value:any,detail?:string,tone?:string}){return <div className="stat"><div className="spread"><span>{label}</span><span className={'stat-icon '+tone}><Icon size={18}/></span></div><strong>{value}</strong>{detail&&<small>{detail}</small>}</div>;}

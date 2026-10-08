@@ -1,0 +1,123 @@
+{
+  "time": "2026-10-08T00:30:18.284Z",
+  "passed": 29,
+  "failed": 0,
+  "results": [
+    {
+      "name": "Schema has 11 application tables",
+      "status": "PASS"
+    },
+    {
+      "name": "Direct SQL valid booking",
+      "status": "PASS"
+    },
+    {
+      "name": "Direct SQL overlap blocked",
+      "status": "PASS"
+    },
+    {
+      "name": "Direct SQL same-time blocked",
+      "status": "PASS"
+    },
+    {
+      "name": "Direct SQL adjacent permitted",
+      "status": "PASS"
+    },
+    {
+      "name": "Direct SQL overcapacity blocked",
+      "status": "PASS"
+    },
+    {
+      "name": "Direct SQL fractional participants blocked",
+      "status": "PASS"
+    },
+    {
+      "name": "Direct SQL outside hours blocked",
+      "status": "PASS"
+    },
+    {
+      "name": "Direct SQL invalid time blocked",
+      "status": "PASS"
+    },
+    {
+      "name": "Direct SQL reverse interval blocked",
+      "status": "PASS"
+    },
+    {
+      "name": "Direct SQL invalid calendar date blocked",
+      "status": "PASS"
+    },
+    {
+      "name": "Direct SQL past active booking blocked",
+      "status": "PASS"
+    },
+    {
+      "name": "Employee approval actor rejected by trigger",
+      "status": "PASS"
+    },
+    {
+      "name": "Missing rejection reason blocked by trigger",
+      "status": "PASS"
+    },
+    {
+      "name": "Approver metadata required",
+      "status": "PASS"
+    },
+    {
+      "name": "Admin approval allowed",
+      "status": "PASS"
+    },
+    {
+      "name": "Notification atomic with approval",
+      "status": "PASS"
+    },
+    {
+      "name": "Audit atomic with approval",
+      "status": "PASS"
+    },
+    {
+      "name": "Immutable booking interval guarded",
+      "status": "PASS"
+    },
+    {
+      "name": "Other employee cancellation actor rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Early completion rejected",
+      "status": "PASS"
+    },
+    {
+      "name": "Room maintenance cannot invalidate active slots",
+      "status": "PASS"
+    },
+    {
+      "name": "Owner cancellation allowed",
+      "status": "PASS"
+    },
+    {
+      "name": "Released interval can be booked again",
+      "status": "PASS"
+    },
+    {
+      "name": "Completed status cannot be resurrected",
+      "status": "PASS"
+    },
+    {
+      "name": "Last active admin protected",
+      "status": "PASS"
+    },
+    {
+      "name": "Foreign keys enforced",
+      "status": "PASS"
+    },
+    {
+      "name": "Room-date index used",
+      "status": "PASS"
+    },
+    {
+      "name": "Elapsed approval completes and sends one notification",
+      "status": "PASS"
+    }
+  ]
+}

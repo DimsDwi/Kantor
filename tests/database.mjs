@@ -1,0 +1,42 @@
+import {DatabaseSync} from 'node:sqlite';
+import {readFileSync,readdirSync,writeFileSync,mkdirSync} from 'node:fs';
+import assert from 'node:assert/strict';
+const db=new DatabaseSync(':memory:');db.exec('PRAGMA foreign_keys=ON');
+for(const f of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())db.exec(readFileSync('drizzle/'+f,'utf8'));
+const results=[];function check(name,fn){try{fn();results.push({name,status:'PASS'});console.log('PASS '+name);}catch(e){results.push({name,status:'FAIL',error:e.message});console.error('FAIL '+name,e.message);}}
+db.exec("INSERT INTO profiles(id,full_name,email,employee_id,department,position,role,password_hash) VALUES('e','Ayu Pratama','ayu@example.com','E1','People','HR','employee','hash'),('a','Raka Wijaya','raka@example.com','A1','GA','Admin','admin','hash'),('o','Dimas Saputra','dimas@example.com','E2','IT','Engineer','employee','hash'); INSERT INTO rooms(id,room_name,building,floor,room_number,capacity,description) VALUES('r','Ruang Rapat Utama','Gedung Utama','3','301',10,'Rapat koordinasi')");
+const date=new Date(Date.now()+10*86400000).toISOString().slice(0,10);
+let seq=0;const insert=db.prepare('INSERT INTO bookings(id,user_id,room_id,booking_date,start_time,end_time,purpose,participant_count,contact_number,status,rejection_reason,approved_by,approved_at,actor_id,request_key) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+function book(overrides={}){const b={id:'b'+(++seq),user:'e',room:'r',date,start:'09:00',end:'11:00',count:5,status:'pending',reason:null,approver:null,at:null,actor:'e',...overrides};insert.run(b.id,b.user,b.room,b.date,b.start,b.end,'Diskusi proyek',b.count,'081234567890',b.status,b.reason,b.approver,b.at,b.actor,b.id);return b.id;}
+check('Schema has 11 application tables',()=>assert.equal(db.prepare("SELECT count(*) n FROM sqlite_schema WHERE type='table'").get().n,11));
+let id;check('Direct SQL valid booking',()=>{id=book();});
+check('Direct SQL overlap blocked',()=>assert.throws(()=>book({start:'10:00',end:'12:00'}),/BOOKING_CONFLICT/));
+check('Direct SQL same-time blocked',()=>assert.throws(()=>book(),/BOOKING_CONFLICT/));
+check('Direct SQL adjacent permitted',()=>book({start:'11:00',end:'12:00'}));
+check('Direct SQL overcapacity blocked',()=>assert.throws(()=>book({count:11,start:'13:00',end:'14:00'}),/CAPACITY_EXCEEDED/));
+check('Direct SQL fractional participants blocked',()=>assert.throws(()=>book({count:2.5,start:'13:00',end:'14:00'}),/INVALID_PARTICIPANTS/));
+check('Direct SQL outside hours blocked',()=>assert.throws(()=>book({start:'07:00',end:'08:00'}),/OUTSIDE_HOURS/));
+check('Direct SQL invalid time blocked',()=>assert.throws(()=>book({start:'25:00',end:'26:00'}),/INVALID_TIME/));
+check('Direct SQL reverse interval blocked',()=>assert.throws(()=>book({start:'14:00',end:'13:00'}),/booking_time/));
+check('Direct SQL invalid calendar date blocked',()=>assert.throws(()=>book({date:'2027-02-30'}),/INVALID_DATE/));
+check('Direct SQL past active booking blocked',()=>assert.throws(()=>book({date:'2020-01-01'}),/PAST_BOOKING/));
+check('Employee approval actor rejected by trigger',()=>assert.throws(()=>db.prepare("UPDATE bookings SET status='approved',approved_by='e',approved_at=CURRENT_TIMESTAMP WHERE id=?").run(id),/FORBIDDEN_ACTOR/));
+check('Missing rejection reason blocked by trigger',()=>assert.throws(()=>db.prepare("UPDATE bookings SET status='rejected',actor_id='a' WHERE id=?").run(id),/REJECT_REASON_REQUIRED/));
+check('Approver metadata required',()=>assert.throws(()=>db.prepare("UPDATE bookings SET status='approved',actor_id='a' WHERE id=?").run(id),/INVALID_APPROVER/));
+check('Admin approval allowed',()=>db.prepare("UPDATE bookings SET status='approved',actor_id='a',approved_by='a',approved_at=CURRENT_TIMESTAMP WHERE id=?").run(id));
+check('Notification atomic with approval',()=>assert.equal(db.prepare("SELECT count(*) n FROM notifications WHERE reference_id=? AND type='approved'").get(id).n,1));
+check('Audit atomic with approval',()=>assert.equal(db.prepare("SELECT count(*) n FROM activity_logs WHERE entity_id=? AND action='approved_booking'").get(id).n,1));
+check('Immutable booking interval guarded',()=>assert.throws(()=>db.prepare("UPDATE bookings SET start_time='10:00' WHERE id=?").run(id),/INVALID_TRANSITION/));
+check('Other employee cancellation actor rejected',()=>assert.throws(()=>db.prepare("UPDATE bookings SET status='cancelled',actor_id='o' WHERE id=?").run(id),/FORBIDDEN_ACTOR/));
+check('Early completion rejected',()=>assert.throws(()=>db.prepare("UPDATE bookings SET status='completed' WHERE id=?").run(id),/INVALID_TRANSITION/));
+check('Room maintenance cannot invalidate active slots',()=>assert.throws(()=>db.exec("UPDATE rooms SET status='maintenance' WHERE id='r'"),/ROOM_HAS_BOOKINGS/));
+check('Owner cancellation allowed',()=>db.prepare("UPDATE bookings SET status='cancelled',actor_id='e' WHERE id=?").run(id));
+check('Released interval can be booked again',()=>book());
+check('Completed status cannot be resurrected',()=>{const b=book({date:'2020-01-01',status:'completed',actor:'a'});assert.throws(()=>db.prepare("UPDATE bookings SET status='pending' WHERE id=?").run(b),/INVALID_TRANSITION/);});
+check('Last active admin protected',()=>assert.throws(()=>db.exec("UPDATE profiles SET role='employee' WHERE id='a'"),/LAST_ADMIN/));
+check('Foreign keys enforced',()=>assert.throws(()=>db.exec("INSERT INTO room_facilities(room_id,facility_id) VALUES('missing','missing')"),/FOREIGN KEY/));
+check('Room-date index used',()=>assert.match(JSON.stringify(db.prepare("EXPLAIN QUERY PLAN SELECT * FROM bookings WHERE room_id='r' AND booking_date=? AND status='pending'").all(date)),/idx_bookings_room_date/));
+// Fixture simulates an approved booking whose end time has naturally passed.
+check('Elapsed approval completes and sends one notification',()=>{db.exec('DROP TRIGGER booking_insert_validation');const b=book({date:'2020-01-02',status:'approved',actor:'a',approver:'a',at:'2020-01-01'});db.exec(readFileSync('drizzle/0002_validation_guards.sql','utf8').split('--> statement-breakpoint')[0]);db.prepare("UPDATE bookings SET status='completed' WHERE id=?").run(b);assert.equal(db.prepare("SELECT count(*) n FROM notifications WHERE reference_id=? AND type='completed'").get(b).n,1);db.prepare("UPDATE bookings SET status='completed' WHERE id=?").run(b);assert.equal(db.prepare("SELECT count(*) n FROM notifications WHERE reference_id=? AND type='completed'").get(b).n,1);});
+mkdirSync('qa',{recursive:true});const failed=results.filter(r=>r.status==='FAIL').length;writeFileSync('qa/database-results.json',JSON.stringify({time:new Date().toISOString(),passed:results.length-failed,failed,results},null,2));console.log(`${results.length-failed}/${results.length} passed`);process.exitCode=failed?1:0;
+
